@@ -1,0 +1,953 @@
+{
+ "cells": [
+  {
+   "metadata": {},
+   "cell_type": "code",
+   "outputs": [],
+   "execution_count": null,
+   "source": [
+    "# # Analiza danych z Twittera\n",
+    "# ## Wymagania\n",
+    "# - pandas\n",
+    "# - matplotlib\n",
+    "#\n",
+    "# Instalacja: `pip install pandas matplotlib`\n"
+   ],
+   "id": "f4786ce2710d21cf"
+  },
+  {
+   "metadata": {},
+   "cell_type": "code",
+   "outputs": [],
+   "execution_count": null,
+   "source": "# # Część 1 - Przetwarzanie i oczyszczanie danych z Twittera\n",
+   "id": "c828b5f3400531e8"
+  },
+  {
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-02-08T09:23:15.614711Z",
+     "start_time": "2026-02-08T09:23:15.229388Z"
+    }
+   },
+   "cell_type": "code",
+   "source": [
+    "import pandas as pd\n",
+    "import re\n"
+   ],
+   "id": "49afce50fb85e100",
+   "outputs": [],
+   "execution_count": 3
+  },
+  {
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-02-08T09:23:15.653990Z",
+     "start_time": "2026-02-08T09:23:15.615859Z"
+    }
+   },
+   "cell_type": "code",
+   "source": [
+    "df = pd.read_csv('dane3.csv')\n",
+    "print(f\"Wczytano {len(df)} wierszy\")\n",
+    "print(f\"\\nPierwsze 3 wiersze:\")\n",
+    "print(df.head(3))\n",
+    "print(f\"\\nKolumny: {df.columns.tolist()}\")\n"
+   ],
+   "id": "27ca73a046e4d276",
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Wczytano 1950 wierszy\n",
+      "\n",
+      "Pierwsze 3 wiersze:\n",
+      "   coordinates                      created_at hashtags media urls  \\\n",
+      "0          NaN  Mon Jul 05 07:58:09 +0000 2021      NaN   NaN  NaN   \n",
+      "1          NaN  Mon Jul 05 08:21:28 +0000 2021      NaN   NaN  NaN   \n",
+      "2          NaN  Mon Jul 05 12:50:04 +0000 2021      NaN   NaN  NaN   \n",
+      "\n",
+      "   favorite_count                   id in_reply_to_screen_name  \\\n",
+      "0               1  1411957559712432128                  ciahol   \n",
+      "1               0  1411963424221941763           RyszardWojcik   \n",
+      "2               1  1412031023588708352         Kwiatkow_Lipska   \n",
+      "\n",
+      "   in_reply_to_status_id  in_reply_to_user_id  ... user_followers_count  \\\n",
+      "0           1.411813e+18         1.313318e+09  ...                 4366   \n",
+      "1           1.411944e+18         5.448980e+08  ...                37596   \n",
+      "2           1.412019e+18         1.270771e+18  ...                 1147   \n",
+      "\n",
+      "  user_friends_count user_listed_count                 user_location  \\\n",
+      "0               5053                 9  Jastrzębie Zdrój woj śląskie   \n",
+      "1               1480               182                        Polska   \n",
+      "2               1861                 9                           NaN   \n",
+      "\n",
+      "                                          user_name  user_screen_name  \\\n",
+      "0                                   Malina Wąsowska          NieOddac   \n",
+      "1                                meteoprognoza.pl🇵🇱   MeteoprognozaPL   \n",
+      "2  Jola.Iza Lubelanka z Podkarpacia # Unia to My 🇪🇺         jolaiza29   \n",
+      "\n",
+      "  user_statuses_count user_time_zone                    user_urls  \\\n",
+      "0               24391            NaN         https://tumalina.pl/   \n",
+      "1              200993            NaN  http://www.meteoprognoza.pl   \n",
+      "2               24775            NaN                          NaN   \n",
+      "\n",
+      "  user_verified  \n",
+      "0         False  \n",
+      "1         False  \n",
+      "2         False  \n",
+      "\n",
+      "[3 rows x 35 columns]\n",
+      "\n",
+      "Kolumny: ['coordinates', 'created_at', 'hashtags', 'media', 'urls', 'favorite_count', 'id', 'in_reply_to_screen_name', 'in_reply_to_status_id', 'in_reply_to_user_id', 'lang', 'place', 'possibly_sensitive', 'quote_id', 'retweet_count', 'retweet_id', 'retweet_screen_name', 'source', 'text', 'tweet_url', 'user_created_at', 'user_id', 'user_default_profile_image', 'user_description', 'user_favourites_count', 'user_followers_count', 'user_friends_count', 'user_listed_count', 'user_location', 'user_name', 'user_screen_name', 'user_statuses_count', 'user_time_zone', 'user_urls', 'user_verified']\n"
+     ]
+    }
+   ],
+   "execution_count": 4
+  },
+  {
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-02-08T09:23:15.703390Z",
+     "start_time": "2026-02-08T09:23:15.663824Z"
+    }
+   },
+   "cell_type": "code",
+   "source": [
+    "# Mapowanie angielskich skrótów na polskie pełne nazwy\n",
+    "dni_mapowanie = {\n",
+    "    'Mon': 'Poniedziałek',\n",
+    "    'Tue': 'Wtorek',\n",
+    "    'Wed': 'Środa',\n",
+    "    'Thu': 'Czwartek',\n",
+    "    'Fri': 'Piątek',\n",
+    "    'Sat': 'Sobota',\n",
+    "    'Sun': 'Niedziela'\n",
+    "}\n",
+    "\n",
+    "def zamien_dzien_na_polski(data_str):\n",
+    "    if pd.isna(data_str):\n",
+    "        return None\n",
+    "    # Format: Mon Jul 05 07:58:09 +0000 2021\n",
+    "    dzien_skrot = data_str.split()[0]\n",
+    "    return dni_mapowanie.get(dzien_skrot, dzien_skrot)\n",
+    "\n",
+    "df['dzien_tygodnia_pl'] = df['created_at'].apply(zamien_dzien_na_polski)\n",
+    "print(\"\\n1. Nowa kolumna 'dzien_tygodnia_pl':\")\n",
+    "print(df[['created_at', 'dzien_tygodnia_pl']].head(10))\n"
+   ],
+   "id": "393cc5a0551abed",
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "1. Nowa kolumna 'dzien_tygodnia_pl':\n",
+      "                       created_at dzien_tygodnia_pl\n",
+      "0  Mon Jul 05 07:58:09 +0000 2021      Poniedziałek\n",
+      "1  Mon Jul 05 08:21:28 +0000 2021      Poniedziałek\n",
+      "2  Mon Jul 05 12:50:04 +0000 2021      Poniedziałek\n",
+      "3  Mon Jul 05 06:33:46 +0000 2021      Poniedziałek\n",
+      "4  Mon Jul 05 11:13:20 +0000 2021      Poniedziałek\n",
+      "5  Mon Jul 05 07:12:28 +0000 2021      Poniedziałek\n",
+      "6  Mon Jul 05 08:25:33 +0000 2021      Poniedziałek\n",
+      "7  Mon Jul 05 12:26:06 +0000 2021      Poniedziałek\n",
+      "8  Mon Jul 05 08:47:38 +0000 2021      Poniedziałek\n",
+      "9  Mon Jul 05 10:31:27 +0000 2021      Poniedziałek\n"
+     ]
+    }
+   ],
+   "execution_count": 5
+  },
+  {
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-02-08T09:23:15.749735Z",
+     "start_time": "2026-02-08T09:23:15.723530Z"
+    }
+   },
+   "cell_type": "code",
+   "source": [
+    "miesiace_mapowanie = {\n",
+    "    'Jan': '01',\n",
+    "    'Feb': '02',\n",
+    "    'Mar': '03',\n",
+    "    'Apr': '04',\n",
+    "    'May': '05',\n",
+    "    'Jun': '06',\n",
+    "    'Jul': '07',\n",
+    "    'Aug': '08',\n",
+    "    'Sep': '09',\n",
+    "    'Oct': '10',\n",
+    "    'Nov': '11',\n",
+    "    'Dec': '12'\n",
+    "}\n",
+    "\n",
+    "def zamien_miesiac_na_liczbe(data_str):\n",
+    "    if pd.isna(data_str):\n",
+    "        return None\n",
+    "    # Format przykładowy: Jun 2021 lub podobny\n",
+    "    for skrot, liczba in miesiace_mapowanie.items():\n",
+    "        if skrot in str(data_str):\n",
+    "            return str(data_str).replace(skrot, liczba)\n",
+    "    return data_str\n",
+    "\n",
+    "df['user_created_at_numeric'] = df['user_created_at'].apply(zamien_miesiac_na_liczbe)\n",
+    "print(\"\\n2. Nowa kolumna 'user_created_at_numeric':\")\n",
+    "print(df[['user_created_at', 'user_created_at_numeric']].head(10))\n"
+   ],
+   "id": "da438b65bde7f529",
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "2. Nowa kolumna 'user_created_at_numeric':\n",
+      "                  user_created_at        user_created_at_numeric\n",
+      "0  Mon Feb 08 16:44:23 +0000 2021  Mon 02 08 16:44:23 +0000 2021\n",
+      "1  Wed Jul 16 13:54:38 +0000 2014  Wed 07 16 13:54:38 +0000 2014\n",
+      "2  Thu May 07 21:18:59 +0000 2015  Thu 05 07 21:18:59 +0000 2015\n",
+      "3  Thu Jul 27 06:30:20 +0000 2017  Thu 07 27 06:30:20 +0000 2017\n",
+      "4  Mon Mar 02 13:22:28 +0000 2015  Mon 03 02 13:22:28 +0000 2015\n",
+      "5  Sat Jun 24 07:17:45 +0000 2017  Sat 06 24 07:17:45 +0000 2017\n",
+      "6  Mon Mar 09 13:17:38 +0000 2015  Mon 03 09 13:17:38 +0000 2015\n",
+      "7  Thu Dec 19 07:40:40 +0000 2013  Thu 12 19 07:40:40 +0000 2013\n",
+      "8  Sun Feb 19 11:09:32 +0000 2017  Sun 02 19 11:09:32 +0000 2017\n",
+      "9  Thu Jul 27 06:30:20 +0000 2017  Thu 07 27 06:30:20 +0000 2017\n"
+     ]
+    }
+   ],
+   "execution_count": 6
+  },
+  {
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-02-08T09:23:15.763830Z",
+     "start_time": "2026-02-08T09:23:15.751585Z"
+    }
+   },
+   "cell_type": "code",
+   "source": [
+    "linki_do_tweetow = df['tweet_url'].dropna().tolist()\n",
+    "print(f\"\\n3. Znaleziono {len(linki_do_tweetow)} linków do tweetów\")\n",
+    "print(\"Przykładowe linki do tweetów:\")\n",
+    "for link in linki_do_tweetow[:5]:\n",
+    "    print(f\"  - {link}\")\n"
+   ],
+   "id": "c771486071dadbd2",
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "3. Znaleziono 1950 linków do tweetów\n",
+      "Przykładowe linki do tweetów:\n",
+      "  - https://twitter.com/NieOddac/status/1411957559712432128\n",
+      "  - https://twitter.com/MeteoprognozaPL/status/1411963424221941763\n",
+      "  - https://twitter.com/jolaiza29/status/1412031023588708352\n",
+      "  - https://twitter.com/PogodaMeteo/status/1411936323779371013\n",
+      "  - https://twitter.com/WESLEYROBERTART/status/1412006678275448834\n"
+     ]
+    }
+   ],
+   "execution_count": 7
+  },
+  {
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-02-08T09:23:15.794328Z",
+     "start_time": "2026-02-08T09:23:15.771628Z"
+    }
+   },
+   "cell_type": "code",
+   "source": [
+    "def wyciagnij_linki_z_tekstu(tekst):\n",
+    "    if pd.isna(tekst):\n",
+    "        return []\n",
+    "    # Wzorzec dla URL-i\n",
+    "    url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\\\(\\\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'\n",
+    "    return re.findall(url_pattern, str(tekst))\n",
+    "\n",
+    "# Zbierz linki z kolumny 'urls'\n",
+    "linki_z_urls = []\n",
+    "for urls in df['urls'].dropna():\n",
+    "    linki_z_urls.extend(wyciagnij_linki_z_tekstu(urls))\n",
+    "\n",
+    "# Zbierz linki również z tekstu tweetów\n",
+    "linki_z_tekstu = []\n",
+    "for tekst in df['text'].dropna():\n",
+    "    linki_z_tekstu.extend(wyciagnij_linki_z_tekstu(tekst))\n",
+    "\n",
+    "# Połącz wszystkie linki\n",
+    "wszystkie_linki = list(dict.(linki_z_urls + linki_z_tekstu))\n",
+    "print(f\"\\n4. Znaleziono {len(wszystkie_linki)} unikatowych linków w tweetach\")\n",
+    "print(\"Przykładowe linki z tweetów:\")\n",
+    "for link in wszystkie_linki[:5]:\n",
+    "    print(f\"  - {link}\")\n"
+   ],
+   "id": "b86fba46fe75b154",
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "4. Znaleziono 706 unikatowych linków w tweetach\n",
+      "Przykładowe linki z tweetów:\n",
+      "  - https://t.co/BCAyWVMRni\n",
+      "  - https://t.co/unaqSEE8Ae\n",
+      "  - https://t.co/IyTs5wtWWv\n",
+      "  - https://t.co/akrRfzAJFh\n",
+      "  - https://t.co/DjnUWNEMPX\n"
+     ]
+    }
+   ],
+   "execution_count": 8
+  },
+  {
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-02-08T09:23:15.814037Z",
+     "start_time": "2026-02-08T09:23:15.798168Z"
+    }
+   },
+   "cell_type": "code",
+   "source": [
+    "def wyciagnij_linki_obrazkow(media_str):\n",
+    "    if pd.isna(media_str):\n",
+    "        return []\n",
+    "    # Wzorzec dla linków do obrazków\n",
+    "    img_pattern = r'http[s]?://[^\\s,\\[\\]\\'\\\"]+\\.(?:jpg|jpeg|png|gif|webp|bmp)'\n",
+    "    linki = re.findall(img_pattern, str(media_str), re.IGNORECASE)\n",
+    "    # Również ogólne linki z kolumny media\n",
+    "    if not linki:\n",
+    "        url_pattern = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\\\(\\\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'\n",
+    "        linki = re.findall(url_pattern, str(media_str))\n",
+    "    return linki\n",
+    "\n",
+    "linki_do_obrazkow = []\n",
+    "for media in df['media'].dropna():\n",
+    "    linki_do_obrazkow.extend(wyciagnij_linki_obrazkow(media))\n",
+    "\n",
+    "linki_do_obrazkow = list(set(linki_do_obrazkow))\n",
+    "print(f\"\\n5. Znaleziono {len(linki_do_obrazkow)} unikatowych linków do obrazków\")\n",
+    "print(\"Przykładowe linki do obrazków:\")\n",
+    "for link in linki_do_obrazkow[:5]:\n",
+    "    print(f\"  - {link}\")\n"
+   ],
+   "id": "96859071729b2da6",
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "5. Znaleziono 288 unikatowych linków do obrazków\n",
+      "Przykładowe linki do obrazków:\n",
+      "  - https://twitter.com/artcoobie/status/1411775054589972483/photo/1\n",
+      "  - https://twitter.com/PogodaMeteo/status/1411515133017432068/photo/1\n",
+      "  - https://twitter.com/PogodaMeteo/status/1411219357729017857/photo/1\n",
+      "  - https://twitter.com/Exen/status/1410245549022973955/photo/1\n",
+      "  - https://twitter.com/PogodaMeteo/status/1410467876226600964/photo/1\n"
+     ]
+    }
+   ],
+   "execution_count": 9
+  },
+  {
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-02-08T09:23:15.835724Z",
+     "start_time": "2026-02-08T09:23:15.814778Z"
+    }
+   },
+   "cell_type": "code",
+   "source": [
+    "# Wczytanie listy stopwords\n",
+    "with open('polish.stopwords.txt', 'r', encoding='utf-8') as f:\n",
+    "    stopwords = set(line.strip().lower() for line in f)\n",
+    "\n",
+    "print(f\"\\n6. Wczytano {len(stopwords)} stopwords\")\n",
+    "\n",
+    "def usun_stopwords(tekst):\n",
+    "    if pd.isna(tekst):\n",
+    "        return \"\"\n",
+    "    # Tokenizacja - rozdziel po białych znakach\n",
+    "    slowa = str(tekst).split()\n",
+    "   word_regex = re.compile(r"\w+", re.UNICODE)
+
+def usun_stopwords(tekst):
+    if pd.isna(tekst):
+        return ""
+    tokens = word_regex.findall(str(tekst).lower())   # usuwa interpunkcję
+    tokens_bez = [t for t in tokens if t not in stopwords]
+    return " ".join(tokens_bez),n
+    "\n",
+    "df['text_without_stopwords'] = df['text'].apply(usun_stopwords)\n",
+    "print(\"\\nNowa kolumna 'text_without_stopwords' - porównanie:\")\n",
+    "print(\"\\nOryginalny tekst (pierwsze 3 wiersze):\")\n",
+    "for i, tekst in enumerate(df['text'].head(3)):\n",
+    "    print(f\"{i+1}. {tekst}\")\n",
+    "print(\"\\nTekst bez stopwords (pierwsze 3 wiersze):\")\n",
+    "for i, tekst in enumerate(df['text_without_stopwords'].head(3)):\n",
+    "    print(f\"{i+1}. {tekst}\")\n"
+   ],
+   "id": "d2fab3fff8d11000",
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "6. Wczytano 350 stopwords\n",
+      "\n",
+      "Nowa kolumna 'text_without_stopwords' - porównanie:\n",
+      "\n",
+      "Oryginalny tekst (pierwsze 3 wiersze):\n",
+      "1. @ciahol @Robert06270082 @Renata_Grochal @MacBor4 @poselTTrela @ARozenek Program koalicji Demokraci (od PSL do Rozenka i Treli)\n",
+      "klimat\n",
+      "wolność\n",
+      "samorządność\n",
+      "decentralizacja\n",
+      "reforma edukacji \n",
+      "praworządność\n",
+      "tanie sprawne państwo\n",
+      "rozdział kościoła od państwa\n",
+      "uproszczenie prawa\n",
+      "niezaradnym pomagamy, zaradnym nie przeszkadzamy\n",
+      "To moja skromna propozycja:)\n",
+      "2. @RyszardWojcik @Roberte36015396 @SzczesniakA @Katarzy39952539 Znaczy się Jak jegomość  XY dumał w XIX wieku i wymyślił, że klimat się będzie ocieplał na skutek CO2? Dość karkołomna teza.\n",
+      "3. @Kwiatkow_Lipska @krybarczyk23 @PL_2050 @szymon_holownia @tvn24rozmowa I dalej większość przerabia - kilku ludzi zakłada partię obiecanki, cacanki tylko wstąpcie, zapiszcie sie i w następnej kadencji  głosujcie  na nas .  A, ze nie wyszło ? Sorry, taki mamy klimat, ale już w następnej kadencji wyjdzie. I tak wkoło Macieju\n",
+      "\n",
+      "Tekst bez stopwords (pierwsze 3 wiersze):\n",
+      "1. @ciahol @Robert06270082 @Renata_Grochal @MacBor4 @poselTTrela @ARozenek Program koalicji Demokraci (od PSL Rozenka Treli) klimat wolność samorządność decentralizacja reforma edukacji praworządność tanie sprawne państwo rozdział kościoła państwa uproszczenie prawa niezaradnym pomagamy, zaradnym przeszkadzamy skromna propozycja:)\n",
+      "2. @RyszardWojcik @Roberte36015396 @SzczesniakA @Katarzy39952539 Znaczy jegomość XY dumał XIX wieku wymyślił, klimat ocieplał skutek CO2? karkołomna teza.\n",
+      "3. @Kwiatkow_Lipska @krybarczyk23 @PL_2050 @szymon_holownia @tvn24rozmowa dalej większość przerabia - kilku ludzi zakłada partię obiecanki, cacanki wstąpcie, zapiszcie następnej kadencji głosujcie . A, wyszło ? Sorry, mamy klimat, następnej kadencji wyjdzie. wkoło Macieju\n"
+     ]
+    }
+   ],
+   "execution_count": 10
+  },
+  {
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-02-08T09:23:15.855893Z",
+     "start_time": "2026-02-08T09:23:15.839112Z"
+    }
+   },
+   "cell_type": "code",
+   "source": [
+    "print(\"\\n\" + \"=\"*80)\n",
+    "print(\"PODSUMOWANIE ZADANIA 1\")\n",
+    "print(\"=\"*80)\n",
+    "print(f\"1. Utworzono kolumnę 'dzien_tygodnia_pl' - polskie nazwy dni tygodnia\")\n",
+    "print(f\"2. Utworzono kolumnę 'user_created_at_numeric' - miesiące jako liczby\")\n",
+    "print(f\"3. Lista linków do tweetów: {len(linki_do_tweetow)} elementów\")\n",
+    "print(f\"4. Lista linków z tweetów: {len(wszystkie_linki)} unikatowych linków\")\n",
+    "print(f\"5. Lista linków do obrazków: {len(linki_do_obrazkow)} unikatowych linków\")\n",
+    "print(f\"6. Utworzono kolumnę 'text_without_stopwords' - tekst bez stopwords\")\n",
+    "print(f\"\\nNowe kolumny w DataFrame: {[col for col in df.columns if col in ['dzien_tygodnia_pl', 'user_created_at_numeric', 'text_without_stopwords']]}\")\n",
+    "print(\"=\"*80)\n"
+   ],
+   "id": "8d1bc067f1aa1545",
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "================================================================================\n",
+      "PODSUMOWANIE ZADANIA 1\n",
+      "================================================================================\n",
+      "1. Utworzono kolumnę 'dzien_tygodnia_pl' - polskie nazwy dni tygodnia\n",
+      "2. Utworzono kolumnę 'user_created_at_numeric' - miesiące jako liczby\n",
+      "3. Lista linków do tweetów: 1950 elementów\n",
+      "4. Lista linków z tweetów: 706 unikatowych linków\n",
+      "5. Lista linków do obrazków: 288 unikatowych linków\n",
+      "6. Utworzono kolumnę 'text_without_stopwords' - tekst bez stopwords\n",
+      "\n",
+      "Nowe kolumny w DataFrame: ['dzien_tygodnia_pl', 'user_created_at_numeric', 'text_without_stopwords']\n",
+      "================================================================================\n"
+     ]
+    }
+   ],
+   "execution_count": 11
+  },
+  {
+   "metadata": {},
+   "cell_type": "code",
+   "outputs": [],
+   "execution_count": null,
+   "source": [
+    "# Możesz zapisać przetworzone dane do nowego pliku\n",
+    "# df.to_csv('dane3_przetworzone.csv', index=False)\n",
+    "# print(\"\\nZapisano przetworzone dane do pliku 'dane3_przetworzone.csv'\")\n"
+   ],
+   "id": "aeaf62da900eba9b"
+  },
+  {
+   "metadata": {},
+   "cell_type": "code",
+   "outputs": [],
+   "execution_count": null,
+   "source": "# # Część 2 - Eksploracyjna analiza danych\n",
+   "id": "f8d2d3f1aee92f6b"
+  },
+  {
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-02-08T10:17:04.827964Z",
+     "start_time": "2026-02-08T10:17:04.796123Z"
+    }
+   },
+   "cell_type": "code",
+   "source": [
+    "print(\"=\"*80)\n",
+    "print(\"CZĘŚĆ 2 - EKSPLORACYJNA ANALIZA DANYCH\")\n",
+    "print(\"=\"*80)\n",
+    "\n",
+    "print(\"\\n1. TOP 5 TWEETÓW Z NAJWIĘKSZĄ LICZBĄ POLUBIEŃ:\")\n",
+    "print(\"-\" * 80)\n",
+    "top5_polubienia = df.nlargest(5, 'favorite_count')[['text', 'favorite_count', 'user_screen_name']]\n",
+    "for idx, (_, row) in enumerate(top5_polubienia.iterrows(), 1):\n",
+    "    print(f\"\\n{idx}. Polubienia: {row['favorite_count']}\")\n",
+    "    print(f\"   Autor: @{row['user_screen_name']}\")\n",
+    "    print(f\"   Tweet: {row['text'][:200]}{'...' if len(str(row['text'])) > 200 else ''}\")\n"
+   ],
+   "id": "d0ba85aad05fe297",
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "================================================================================\n",
+      "CZĘŚĆ 2 - EKSPLORACYJNA ANALIZA DANYCH\n",
+      "================================================================================\n",
+      "\n",
+      "1. TOP 5 TWEETÓW Z NAJWIĘKSZĄ LICZBĄ POLUBIEŃ:\n",
+      "--------------------------------------------------------------------------------\n",
+      "\n",
+      "1. Polubienia: 5634\n",
+      "   Autor: @999nob0dy\n",
+      "   Tweet: Imagine pójść na pierwsza randkę z dziewczyna na jakiś wiejski festyn. Czujesz ten klimat? Dmuchane zamki, pełno emerytów, polskie hity lat 90, zapach wiejskiego gowna i najtańszy browar na łące\n",
+      "\n",
+      "2. Polubienia: 467\n",
+      "   Autor: @tomaawroblewski\n",
+      "   Tweet: Kalifornia kroliczkiem katastrofy klimatyzmu. Nawet Bloomberg przyznaje, że szaleńczy pęd do zielonej energii doprowadził do masowych wylączeń i awarii Klimatyści swoje, że to klimat,  ale jakoś dziwn...\n",
+      "\n",
+      "3. Polubienia: 215\n",
+      "   Autor: @Annie_6167\n",
+      "   Tweet: @yahabibtii Pracuje w kawiarni i nieraz jacyś stali klienci przychodzili z laptopem pracować itd, mówili że po prostu u nas w kawiarni jest fajny klimat, że dobrze im się tu pracuje, z resztą też taka...\n",
+      "\n",
+      "4. Polubienia: 131\n",
+      "   Autor: @KLubnauer\n",
+      "   Tweet: Ciekawe, czy upały i pożary w chłodnej Kanadzie, przekonają niektórych, że trzeba chronić klimat?\n",
+      "\n",
+      "#kryzysklimatyczny\n",
+      "\n",
+      "5. Polubienia: 99\n",
+      "   Autor: @lonellyharryy\n",
+      "   Tweet: myślę, że klimat https://t.co/uIXNcsyCTW\n"
+     ]
+    }
+   ],
+   "execution_count": 14
+  },
+  {
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-02-08T10:26:02.436392Z",
+     "start_time": "2026-02-08T10:26:02.404950Z"
+    }
+   },
+   "cell_type": "code",
+   "source": [
+    "print(\"\\n\" + \"=\"*80)\n",
+    "print(\"2. TOP 5 TWEETÓW Z NAJWIĘKSZĄ LICZBĄ RETWEETÓW:\")\n",
+    "print(\"-\" * 80)\n",
+    "# Filtrujemy tylko oryginalne tweety (które NIE są retweetami)\n",
+    "# Tweet jest retweetem gdy ma wypełnioną kolumnę retweet_id\n",
+    "oryginalne_tweety = df[df['retweet_id'].isna()]\n",
+    "top5_retweety = oryginalne_tweety.nlargest(5, 'retweet_count')[['text', 'retweet_count', 'user_screen_name']]\n",
+    "print(f\"(Analizowane tylko oryginalne tweety, bez retweetów: {len(oryginalne_tweety)} z {len(df)})\")\n",
+    "for idx, (_, row) in enumerate(top5_retweety.iterrows(), 1):\n",
+    "    print(f\"\\n{idx}. Retweety: {row['retweet_count']}\")\n",
+    "    print(f\"   Autor: @{row['user_screen_name']}\")\n",
+    "    print(f\"   Tweet: {row['text'][:200]}{'...' if len(str(row['text'])) > 200 else ''}\")\n"
+   ],
+   "id": "9979660494bda407",
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "================================================================================\n",
+      "2. TOP 5 TWEETÓW Z NAJWIĘKSZĄ LICZBĄ RETWEETÓW:\n",
+      "--------------------------------------------------------------------------------\n",
+      "(Analizowane tylko oryginalne tweety, bez retweetów: 1185 z 1950)\n",
+      "\n",
+      "1. Retweety: 395\n",
+      "   Autor: @999nob0dy\n",
+      "   Tweet: Imagine pójść na pierwsza randkę z dziewczyna na jakiś wiejski festyn. Czujesz ten klimat? Dmuchane zamki, pełno emerytów, polskie hity lat 90, zapach wiejskiego gowna i najtańszy browar na łące\n",
+      "\n",
+      "2. Retweety: 142\n",
+      "   Autor: @tomaawroblewski\n",
+      "   Tweet: Kalifornia kroliczkiem katastrofy klimatyzmu. Nawet Bloomberg przyznaje, że szaleńczy pęd do zielonej energii doprowadził do masowych wylączeń i awarii Klimatyści swoje, że to klimat,  ale jakoś dziwn...\n",
+      "\n",
+      "3. Retweety: 14\n",
+      "   Autor: @MosinskiJan\n",
+      "   Tweet: Red. Nizinkiewicz z jednego z dzienników, tworzy wokół uchwały sanacyjnej przyjętej przez #KongresPiS  klimat, jakoby to miało dotyczyć niezliczonej grupy osób. Otóż my sobie z tym poradzimy bez eluku...\n",
+      "\n",
+      "4. Retweety: 13\n",
+      "   Autor: @ManOfWorseSort\n",
+      "   Tweet: Chrzczonowicz z @oko_press w @tvn24 fałszuje wystąpienie Tuska, że nie było w nim nic dla młodych. W realu była zapowiedź walki o klimat i walki z długiem, który właśnie będzie głównie dotykał kolejne...\n",
+      "\n",
+      "5. Retweety: 11\n",
+      "   Autor: @EkoWiosna\n",
+      "   Tweet: Czy ptaki wędrowne 🐤pomogą roślinom \"uciec\" przed ociepleniem?\n",
+      "Więcej informacji:\n",
+      "                 👇\n",
+      "https://t.co/LIk8cpnCGU\n",
+      "                  🐤\n",
+      "#ptaki #klimat #ocieplenie #bioróżnorodność https://t.c...\n"
+     ]
+    }
+   ],
+   "execution_count": 16
+  },
+  {
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-02-08T10:26:52.864871Z",
+     "start_time": "2026-02-08T10:26:52.820962Z"
+    }
+   },
+   "cell_type": "code",
+   "source": [
+    "print(\"\\n\" + \"=\"*80)\n",
+    "print(\"3. TWEETY NIE UZNANE JAKO WRAŻLIWE:\")\n",
+    "print(\"-\" * 80)\n",
+    "niewrazliwe_tweety = df[df['possibly_sensitive'] != True]\n",
+    "print(f\"Liczba tweetów nie uznanych jako wrażliwe: {len(niewrazliwe_tweety)}\")\n",
+    "print(f\"Procent wszystkich tweetów: {len(niewrazliwe_tweety)/len(df)*100:.2f}%\")\n",
+    "print(\"\\nPrzykładowe tweety nie wrażliwe (pierwsze 3):\")\n",
+    "for idx, (_, row) in enumerate(niewrazliwe_tweety.head(3).iterrows(), 1):\n",
+    "    print(f\"\\n{idx}. @{row['user_screen_name']}: {row['text'][:150]}{'...' if len(str(row['text'])) > 150 else ''}\")\n"
+   ],
+   "id": "5f30d051aa70d778",
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "================================================================================\n",
+      "3. TWEETY NIE UZNANE JAKO WRAŻLIWE:\n",
+      "--------------------------------------------------------------------------------\n",
+      "Liczba tweetów nie uznanych jako wrażliwe: 502\n",
+      "Procent wszystkich tweetów: 25.74%\n",
+      "\n",
+      "Przykładowe tweety nie wrażliwe (pierwsze 3):\n",
+      "\n",
+      "1. @PogodaMeteo: AutoTweet: Dobowa suma #opad w #Polska w dniu 2021-07-04. Źródło: @IMGWmeteo #pogoda #klimat https://t.co/xsyokVwH5B\n",
+      "\n",
+      "2. @iSokolkaeu: AutoTweet: Dobowa suma #opad w #Polska w dniu 2021-07-04. Źródło: @IMGWmeteo #pogoda #klimat https://t.co/xsyokVwH5B\n",
+      "\n",
+      "3. @Squabercom: Jaki jest klimat rynkowy?\n",
+      "Co ciekawego może się wydarzyć w lipcu?\n",
+      "Co ma wpływ na rekordy na indeksie WIG?\n",
+      "Ile będzie trzeba czekać na kolejne wielkie ...\n"
+     ]
+    }
+   ],
+   "execution_count": 17
+  },
+  {
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-02-08T10:28:12.828994Z",
+     "start_time": "2026-02-08T10:28:12.754563Z"
+    }
+   },
+   "cell_type": "code",
+   "source": [
+    "print(\"\\n\" + \"=\"*80)\n",
+    "print(\"4. TWEETY UŻYTKOWNIKA Z NAJSTARSZYM KONTEM:\")\n",
+    "print(\"-\" * 80)\n",
+    "# Najpierw musimy przekonwertować daty na format datetime\n",
+    "def parse_twitter_date(date_str):\n",
+    "    if pd.isna(date_str):\n",
+    "        return None\n",
+    "    try:\n",
+    "        # Format: Mon Feb 08 16:44:23 +0000 2021\n",
+    "        return pd.to_datetime(date_str, format='%a %b %d %H:%M:%S %z %Y')\n",
+    "    except:\n",
+    "        return None\n",
+    "\n",
+    "df['user_created_at_parsed'] = df['user_created_at'].apply(parse_twitter_date)\n",
+    "najstarszy_uzytkownik_idx = df['user_created_at_parsed'].idxmin()\n",
+    "najstarszy_uzytkownik = df.loc[najstarszy_uzytkownik_idx]\n",
+    "\n",
+    "tweety_najstarszego = df[df['user_id'] == najstarszy_uzytkownik['user_id']]\n",
+    "print(f\"Najstarsze konto: @{najstarszy_uzytkownik['user_screen_name']}\")\n",
+    "print(f\"Data założenia: {najstarszy_uzytkownik['user_created_at']}\")\n",
+    "print(f\"Liczba tweetów tego użytkownika w datasecie: {len(tweety_najstarszego)}\")\n",
+    "print(\"\\nPrzykładowe tweety (max 5):\")\n",
+    "for idx, (_, row) in enumerate(tweety_najstarszego.head(5).iterrows(), 1):\n",
+    "    print(f\"\\n{idx}. {row['text'][:200]}{'...' if len(str(row['text'])) > 200 else ''}\")\n"
+   ],
+   "id": "131e115df05e72e2",
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "================================================================================\n",
+      "4. TWEETY UŻYTKOWNIKA Z NAJSTARSZYM KONTEM:\n",
+      "--------------------------------------------------------------------------------\n",
+      "Najstarsze konto: @ckwadrat\n",
+      "Data założenia: Sat Dec 29 20:29:09 +0000 2007\n",
+      "Liczba tweetów tego użytkownika w datasecie: 1\n",
+      "\n",
+      "Przykładowe tweety (max 5):\n",
+      "\n",
+      "1. Trochę ostrzejszy klimat u nas ale właśnie może czas na zadaszone ścieżki 👇👍 https://t.co/kf1aZSfDqF\n"
+     ]
+    }
+   ],
+   "execution_count": 18
+  },
+  {
+   "metadata": {},
+   "cell_type": "code",
+   "outputs": [],
+   "execution_count": null,
+   "source": [
+    "print(\"\\n\" + \"=\"*80)\n",
+    "print(\"5. TWEETY UŻYTKOWNIKA Z NAJWIĘKSZĄ LICZBĄ FOLLOWERSÓW:\")\n",
+    "print(\"-\" * 80)\n",
+    "najwiecej_followers_idx = df['user_followers_count'].idxmax()\n",
+    "user_najwiecej_followers = df.loc[najwiecej_followers_idx]\n",
+    "\n",
+    "tweety_top_followersow = df[df['user_id'] == user_najwiecej_followers['user_id']]\n",
+    "print(f\"Użytkownik: @{user_najwiecej_followers['user_screen_name']}\")\n",
+    "print(f\"Liczba followersów: {user_najwiecej_followers['user_followers_count']:,}\")\n",
+    "print(f\"Liczba tweetów tego użytkownika w datasecie: {len(tweety_top_followersow)}\")\n",
+    "print(\"\\nPrzykładowe tweety (max 5):\")\n",
+    "for idx, (_, row) in enumerate(tweety_top_followersow.head(5).iterrows(), 1):\n",
+    "    print(f\"\\n{idx}. {row['text'][:200]}{'...' if len(str(row['text'])) > 200 else ''}\")\n"
+   ],
+   "id": "3b16a0257b0fcaef"
+  },
+  {
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-02-08T10:29:50.650219Z",
+     "start_time": "2026-02-08T10:29:50.612791Z"
+    }
+   },
+   "cell_type": "code",
+   "source": [
+    "print(\"\\n\" + \"=\"*80)\n",
+    "print(\"6. ZWERYFIKOWANI UŻYTKOWNICY:\")\n",
+    "print(\"-\" * 80)\n",
+    "zweryfikowani = df[df['user_verified'] == True]\n",
+    "print(f\"Liczba tweetów od zweryfikowanych użytkowników: {len(zweryfikowani)}\")\n",
+    "print(f\"Procent wszystkich tweetów: {len(zweryfikowani)/len(df)*100:.2f}%\")\n",
+    "\n",
+    "# Unikalni zweryfikowani użytkownicy\n",
+    "unikalni_zweryfikowani = zweryfikowani.drop_duplicates(subset=['user_id'])[['user_screen_name', 'user_name', 'user_followers_count']].sort_values('user_followers_count', ascending=False)\n",
+    "print(f\"\\nLiczba unikalnych zweryfikowanych użytkowników: {len(unikalni_zweryfikowani)}\")\n",
+    "print(\"\\nTop 10 zweryfikowanych użytkowników (wg followersów):\")\n",
+    "for idx, (_, row) in enumerate(unikalni_zweryfikowani.head(10).iterrows(), 1):\n",
+    "    print(f\"{idx}. @{row['user_screen_name']} - {row['user_followers_count']:,} followersów\")\n"
+   ],
+   "id": "9126edf4b8d19b50",
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "================================================================================\n",
+      "6. ZWERYFIKOWANI UŻYTKOWNICY:\n",
+      "--------------------------------------------------------------------------------\n",
+      "Liczba tweetów od zweryfikowanych użytkowników: 29\n",
+      "Procent wszystkich tweetów: 1.49%\n",
+      "\n",
+      "Liczba unikalnych zweryfikowanych użytkowników: 13\n",
+      "\n",
+      "Top 10 zweryfikowanych użytkowników (wg followersów):\n",
+      "1. @rzeczpospolita - 332,987 followersów\n",
+      "2. @KLubnauer - 141,416 followersów\n",
+      "3. @pawelkowalpl - 103,095 followersów\n",
+      "4. @DziennikPL - 65,160 followersów\n",
+      "5. @MFIPR_GOV_PL - 44,189 followersów\n",
+      "6. @LasekMaciej - 39,191 followersów\n",
+      "7. @MosinskiJan - 32,012 followersów\n",
+      "8. @mwpotocki - 28,412 followersów\n",
+      "9. @MKiS_GOV_PL - 23,847 followersów\n",
+      "10. @nawacki - 20,046 followersów\n"
+     ]
+    }
+   ],
+   "execution_count": 19
+  },
+  {
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-02-08T10:31:04.528543Z",
+     "start_time": "2026-02-08T10:31:04.494425Z"
+    }
+   },
+   "cell_type": "code",
+   "source": [
+    "print(\"\\n\" + \"=\"*80)\n",
+    "print(\"7. DZIEŃ TYGODNIA Z NAJWIĘKSZĄ LICZBĄ TWEETÓW:\")\n",
+    "print(\"-\" * 80)\n",
+    "\n",
+    "# Używamy wcześniej utworzonej kolumny dzien_tygodnia_pl\n",
+    "dzien_stats = df['dzien_tygodnia_pl'].value_counts()\n",
+    "print(\"\\nLiczba tweetów według dni tygodnia:\")\n",
+    "# Sortuj według kolejności dni tygodnia\n",
+    "dni_kolejnosc = ['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota', 'Niedziela']\n",
+    "for dzien in dni_kolejnosc:\n",
+    "    if dzien in dzien_stats.index:\n",
+    "        procent = (dzien_stats[dzien] / len(df)) * 100\n",
+    "        print(f\"{dzien:15} : {dzien_stats[dzien]:5} tweetów ({procent:5.2f}%)\")\n",
+    "\n",
+    "najczestszy_dzien = dzien_stats.idxmax()\n",
+    "print(f\"\\n>>> Najczęściej tweety były publikowane w: {najczestszy_dzien}\")\n",
+    "print(f\">>> Liczba tweetów: {dzien_stats[najczestszy_dzien]} ({dzien_stats[najczestszy_dzien]/len(df)*100:.2f}%)\")\n"
+   ],
+   "id": "ccf0b055ed1cfe4c",
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "================================================================================\n",
+      "7. DZIEŃ TYGODNIA Z NAJWIĘKSZĄ LICZBĄ TWEETÓW:\n",
+      "--------------------------------------------------------------------------------\n",
+      "\n",
+      "Liczba tweetów według dni tygodnia:\n",
+      "Poniedziałek    :   124 tweetów ( 6.36%)\n",
+      "Środa           :   281 tweetów (14.41%)\n",
+      "Czwartek        :   251 tweetów (12.87%)\n",
+      "Piątek          :   277 tweetów (14.21%)\n",
+      "Sobota          :   616 tweetów (31.59%)\n",
+      "Niedziela       :   401 tweetów (20.56%)\n",
+      "\n",
+      ">>> Najczęściej tweety były publikowane w: Sobota\n",
+      ">>> Liczba tweetów: 616 (31.59%)\n"
+     ]
+    }
+   ],
+   "execution_count": 20
+  },
+  {
+   "metadata": {},
+   "cell_type": "code",
+   "outputs": [],
+   "execution_count": null,
+   "source": "# # Część 3 - Wizualizacja z matplotlib\n",
+   "id": "56411c1ad46c718e"
+  },
+  {
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-02-08T10:33:39.380048Z",
+     "start_time": "2026-02-08T10:33:19.774717Z"
+    }
+   },
+   "cell_type": "code",
+   "source": [
+    "import matplotlib.pyplot as plt\n",
+    "\n",
+    "print(\"\\n\" + \"=\"*80)\n",
+    "print(\"CZĘŚĆ 3 - WIZUALIZACJA\")\n",
+    "print(\"=\"*80)\n",
+    "\n",
+    "# Przygotowanie danych\n",
+    "dni_kolejnosc = ['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota', 'Niedziela']\n",
+    "dzien_counts = df['dzien_tygodnia_pl'].value_counts()\n",
+    "\n",
+    "# Sortuj według kolejności dni tygodnia\n",
+    "dane_do_wykresu = [dzien_counts.get(dzien, 0) for dzien in dni_kolejnosc]\n",
+    "\n",
+    "# Tworzenie wykresu\n",
+    "plt.figure(figsize=(12, 6))\n",
+    "bars = plt.bar(dni_kolejnosc, dane_do_wykresu, color='steelblue', edgecolor='navy', alpha=0.7)\n",
+    "\n",
+    "# Dodaj wartości na słupkach\n",
+    "for bar in bars:\n",
+    "    height = bar.get_height()\n",
+    "    plt.text(bar.get_x() + bar.get_width()/2., height,\n",
+    "             f'{int(height)}',\n",
+    "             ha='center', va='bottom', fontsize=10, fontweight='bold')\n",
+    "\n",
+    "# Formatowanie wykresu\n",
+    "plt.xlabel('Dzień tygodnia', fontsize=12, fontweight='bold')\n",
+    "plt.ylabel('Liczba tweetów', fontsize=12, fontweight='bold')\n",
+    "plt.title('Liczba tweetów według dni tygodnia', fontsize=14, fontweight='bold', pad=20)\n",
+    "plt.xticks(rotation=45, ha='right')\n",
+    "plt.grid(axis='y', alpha=0.3, linestyle='--')\n",
+    "plt.tight_layout()\n",
+    "\n",
+    "# Zapisz wykres\n",
+    "plt.savefig('tweety_dzien_tygodnia.png', dpi=300, bbox_inches='tight')\n",
+    "print(\"\\n✓ Wykres został zapisany jako 'tweety_dzien_tygodnia.png'\")\n",
+    "\n",
+    "# Pokaż wykres\n",
+    "plt.show()\n",
+    "\n",
+    "print(\"\\n\" + \"=\"*80)\n",
+    "print(\"ANALIZA ZAKOŃCZONA!\")\n",
+    "print(\"=\"*80)\n",
+    "\n"
+   ],
+   "id": "486f391469402632",
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\n",
+      "================================================================================\n",
+      "ANALIZA ZAKOŃCZONA!\n",
+      "================================================================================\n"
+     ]
+    }
+   ],
+   "execution_count": 24
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 2
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython2",
+   "version": "2.7.6"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
