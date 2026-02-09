@@ -20,7 +20,7 @@
    "cell_type": "code",
    "outputs": [],
    "execution_count": null,
-   "source": "# # Część 1 - Przetwarzanie i oczyszczanie danych z Twittera\n",
+   "source": "# Część 1 Przetwarzanie i oczyszczanie danych z Twittera\n",
    "id": "c828b5f3400531e8"
   },
   {
@@ -494,7 +494,7 @@ def usun_stopwords(tekst):
    "cell_type": "code",
    "outputs": [],
    "execution_count": null,
-   "source": "# # Część 2 - Eksploracyjna analiza danych\n",
+   "source": "# Część 2 - Eksploracyjna analiza danych\n",
    "id": "f8d2d3f1aee92f6b"
   },
   {
@@ -857,7 +857,7 @@ def usun_stopwords(tekst):
    "cell_type": "code",
    "outputs": [],
    "execution_count": null,
-   "source": "# # Część 3 - Wizualizacja z matplotlib\n",
+   "source": "# Część 3 - Wizualizacja z matplotlib\n",
    "id": "56411c1ad46c718e"
   },
   {
